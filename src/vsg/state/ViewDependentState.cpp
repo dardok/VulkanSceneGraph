@@ -14,7 +14,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/commands/PipelineBarrier.h>
 #include <vsg/core/compare.h>
 #include <vsg/io/Logger.h>
-#include <vsg/io/Options.h>
 #include <vsg/io/write.h>
 #include <vsg/lighting/AmbientLight.h>
 #include <vsg/lighting/DirectionalLight.h>
@@ -395,6 +394,8 @@ void ViewDependentState::init(ResourceRequirements& requirements)
 
     Mask shadowMask = 0x1; // TODO: do we inherit from main scene? how?
 
+    auto viewportState = ViewportState::create(VkExtent2D{shadowWidth, shadowHeight});
+
     ref_ptr<View> first_view;
     shadowMaps.resize(maxShadowMaps);
     for (auto& shadowMap : shadowMaps)
@@ -412,6 +413,7 @@ void ViewDependentState::init(ResourceRequirements& requirements)
         shadowMap.view->mask = shadowMask;
         shadowMap.view->camera = Camera::create();
         shadowMap.view->addChild(tcon);
+        shadowMap.view->camera->viewportState = viewportState;
 
         shadowMap.renderGraph = RenderGraph::create();
         shadowMap.renderGraph->addChild(shadowMap.view);

@@ -16,13 +16,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/commands/PipelineBarrier.h>
 #include <vsg/core/Version.h>
 #include <vsg/io/Logger.h>
-#include <vsg/io/Options.h>
 #include <vsg/nodes/Geometry.h>
 #include <vsg/nodes/Group.h>
 #include <vsg/nodes/LOD.h>
 #include <vsg/nodes/QuadGroup.h>
 #include <vsg/nodes/StateGroup.h>
 #include <vsg/state/DescriptorSet.h>
+#include <vsg/state/DynamicState.h>
 #include <vsg/ui/UIEvent.h>
 #include <vsg/vk/CommandBuffer.h>
 #include <vsg/vk/Context.h>
@@ -130,6 +130,8 @@ Context::Context(Device* in_device, const ResourceRequirements& in_resourceRequi
     {
         vsg::debug("Context::Context() reusing descriptorPools = ", descriptorPools);
     }
+
+    defaultPipelineStates.push_back(DynamicState::create());
 }
 
 Context::Context(const Context& context) :
