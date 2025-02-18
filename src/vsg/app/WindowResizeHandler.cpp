@@ -81,6 +81,17 @@ void WindowResizeHandler::scale_rect(VkRect2D& rect)
     rect.extent.height = static_cast<uint32_t>(scale_parameter(edge_y, previous_extent.height, new_extent.height) - rect.offset.y);
 }
 
+void WindowResizeHandler::scale_viewport(VkViewport& viewport)
+{
+    float scale_x =  static_cast<float>(new_extent.width) / static_cast<float>(previous_extent.width);
+    float scale_y =  static_cast<float>(new_extent.height) / static_cast<float>(previous_extent.height);
+
+    viewport.x *= scale_x;
+    viewport.y *= scale_y;
+    viewport.width *= scale_x;
+    viewport.height *= scale_y;
+}
+
 bool WindowResizeHandler::visit(const Object* object, uint32_t index)
 {
     decltype(visited)::value_type objectIndex(object, index);
@@ -125,20 +136,12 @@ void WindowResizeHandler::apply(vsg::View& view)
         auto& viewport = viewportState->viewports[i];
         auto& scissor = viewportState->scissors[i];
 
-        bool renderAreaMatches = (renderArea.offset.x == scissor.offset.x) && (renderArea.offset.y == scissor.offset.y) &&
-                                 (renderArea.extent.width == scissor.extent.width) && (renderArea.extent.height == scissor.extent.height);
+        bool renderAreaMatches = (renderArea == scissor);
 
-        if (new_extent != scissor.extent) scale_rect(scissor);
+        scale_rect(scissor);
+        scale_viewport(viewport);
 
-        viewport.x = static_cast<float>(scissor.offset.x);
-        viewport.y = static_cast<float>(scissor.offset.y);
-        viewport.width = static_cast<float>(scissor.extent.width);
-        viewport.height = static_cast<float>(scissor.extent.height);
-
-        if (renderAreaMatches)
-        {
-            renderArea = scissor;
-        }
+        if (renderAreaMatches) renderArea = scissor;
     }
 
     view.traverse(*this);
