@@ -67,9 +67,9 @@ namespace
     {
         switch (settings.vulkanVersion)
         {
-        case VK_MAKE_API_VERSION(0, 1, 0, 0):
+        case VK_MAKE_VERSION(0, 1, 0):
             return SPV_ENV_VULKAN_1_0;
-        case VK_MAKE_API_VERSION(0, 1, 1, 0):
+        case VK_MAKE_VERSION(0, 1, 1):
             switch (settings.target)
             {
             case ShaderCompileSettings::SPIRV_1_0:
@@ -82,11 +82,11 @@ namespace
             default:
                 return SPV_ENV_VULKAN_1_1;
             }
-        case VK_MAKE_API_VERSION(0, 1, 2, 0):
+        case VK_MAKE_VERSION(0, 1, 2):
             return SPV_ENV_VULKAN_1_2;
-        case VK_MAKE_API_VERSION(0, 1, 3, 0):
+        case VK_MAKE_VERSION(0, 1, 3):
             return SPV_ENV_VULKAN_1_3;
-        //case VK_MAKE_API_VERSION(0, 1, 4, 0):
+        //case VK_MAKE_VERSION(0, 1, 4):
         //    return SPV_ENV_VULKAN_1_4;
         default:
             return SPV_ENV_UNIVERSAL_1_0;
@@ -267,7 +267,14 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
         // convert Vulkan version to glsLang equivalent
         glslang::EShTargetClientVersion targetClientVersion = static_cast<glslang::EShTargetClientVersion>((VK_API_VERSION_MAJOR(settings->vulkanVersion) << 22) | (VK_API_VERSION_MINOR(settings->vulkanVersion) << 12));
 
-        shader->setEnvInput(static_cast<glslang::EShSource>(settings->language), envStage, glslang::EShClientVulkan, settings->clientInputVersion);
+        glslang::EShSource language = glslang::EShSourceNone;
+        switch(settings->language)
+        {
+            case(ShaderCompileSettings::GLSL): language = glslang::EShSourceGlsl; break;
+            case(ShaderCompileSettings::HLSL): language = glslang::EShSourceHlsl; break;
+        }
+
+        shader->setEnvInput(language, envStage, glslang::EShClientVulkan, settings->clientInputVersion);
         shader->setEnvClient(glslang::EShClientVulkan, targetClientVersion);
         shader->setEnvTarget(glslang::EShTargetSpv, targetLanguageVersion);
 

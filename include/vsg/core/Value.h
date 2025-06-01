@@ -16,6 +16,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/core/type_name.h>
 
 #include <vsg/maths/box.h>
+#include <vsg/maths/mat2.h>
 #include <vsg/maths/mat3.h>
 #include <vsg/maths/mat4.h>
 #include <vsg/maths/quat.h>
@@ -192,6 +193,7 @@ namespace vsg
 
     VSG_value(stringValue, std::string);
     VSG_value(wstringValue, std::wstring);
+    VSG_value(pathValue, vsg::Path);
 
     VSG_value(boolValue, bool);
     VSG_value(intValue, int);
@@ -230,6 +232,9 @@ namespace vsg
     VSG_value(uivec2Value, uivec2);
     VSG_value(uivec3Value, uivec3);
     VSG_value(uivec4Value, uivec4);
+
+    VSG_value(mat2Value, mat2);
+    VSG_value(dmat2Value, dmat2);
 
     VSG_value(mat3Value, mat3);
     VSG_value(dmat3Value, dmat3);

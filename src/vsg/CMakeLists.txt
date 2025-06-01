@@ -141,9 +141,11 @@ set(SOURCES
     io/Path.cpp
     io/ReaderWriter.cpp
     io/VSG.cpp
+    io/glsl.cpp
+    io/json.cpp
+    io/JSONParser.cpp
     io/spirv.cpp
     io/tile.cpp
-    io/glsl.cpp
     io/txt.cpp
     io/read.cpp
     io/write.cpp
@@ -242,6 +244,7 @@ set(SOURCES
     vk/Surface.cpp
     vk/Swapchain.cpp
     vk/ResourceRequirements.cpp
+    vk/State.cpp
 
     utils/CommandLine.cpp
     utils/CoordinateSpace.cpp

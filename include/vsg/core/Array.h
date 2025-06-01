@@ -364,6 +364,10 @@ namespace vsg
         ref_ptr<Data> _storage;
     };
 
+    /// useful for CPU work only.
+    VSG_array(stringArray, std::string);
+
+    /// useful for CPU and GPU work.
     VSG_array(byteArray, int8_t);
     VSG_array(ubyteArray, uint8_t);
     VSG_array(shortArray, int16_t);
