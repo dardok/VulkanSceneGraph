@@ -2,7 +2,7 @@
 
 /* <editor-fold desc="MIT License">
 
-Copyright(c) 2024 Robert Osfield
+Copyright(c) 2025 Robert Osfield
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -12,50 +12,44 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
-#include <vsg/maths/mat4.h>
+#include <vsg/commands/Command.h>
 #include <vsg/nodes/Node.h>
+#include <vsg/state/BufferInfo.h>
 
 namespace vsg
 {
 
-    class VSG_DECLSPEC Joint : public Inherit<Node, Joint>
+    /** InstanceDraw provides a lightweight way of binding vertex arrays, indices and then issuing a vkCmdDraw command.
+      * Higher performance equivalent to use of individual vsg::BindVertexBuffers, vsg::BindIndexBuffer and vsg::Draw commands.*/
+    class VSG_DECLSPEC InstanceDraw : public Inherit<Command, InstanceDraw>
     {
     public:
-        Joint();
-        Joint(const Joint& rhs, const CopyOp& copyop = {});
+        InstanceDraw();
+        InstanceDraw(const InstanceDraw& rhs, const CopyOp& copyop = {});
 
-        unsigned int index = 0;
-        std::string name;
-        dmat4 matrix;
+        // vkCmdDraw settings
+        // vkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+        uint32_t vertexCount = 0;
+        uint32_t firstVertex = 0;
 
-        using Children = std::vector<ref_ptr<Node>, allocator_affinity_nodes<ref_ptr<Node>>>;
-        Children children;
+        uint32_t firstBinding = 0;
+        BufferInfoList arrays;
 
-        void addChild(vsg::ref_ptr<Node> child)
-        {
-            children.push_back(child);
-        }
+        void assignArrays(const DataList& in_arrays);
 
     public:
-        ref_ptr<Object> clone(const CopyOp& copyop = {}) const override { return Joint::create(*this, copyop); }
+        ref_ptr<Object> clone(const CopyOp& copyop = {}) const override { return InstanceDraw::create(*this, copyop); }
         int compare(const Object& rhs) const override;
-
-        template<class N, class V>
-        static void t_traverse(N& node, V& visitor)
-        {
-            for (auto& child : node.children) child->accept(visitor);
-        }
-
-        void traverse(Visitor& visitor) override { t_traverse(*this, visitor); }
-        void traverse(ConstVisitor& visitor) const override { t_traverse(*this, visitor); }
-        void traverse(RecordTraversal& visitor) const override { t_traverse(*this, visitor); }
 
         void read(Input& input) override;
         void write(Output& output) const override;
 
+        void compile(Context& context) override;
+        void record(CommandBuffer& commandBuffer) const override;
+
     protected:
-        virtual ~Joint();
+        virtual ~InstanceDraw();
     };
-    VSG_type_name(vsg::Joint);
+    VSG_type_name(vsg::InstanceDraw)
 
 } // namespace vsg

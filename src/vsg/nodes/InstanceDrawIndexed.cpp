@@ -1,6 +1,6 @@
 /* <editor-fold desc="MIT License">
 
-Copyright(c) 2018 Robert Osfield
+Copyright(c) 2025 Robert Osfield
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -13,49 +13,46 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/commands/BindIndexBuffer.h>
 #include <vsg/io/Logger.h>
 #include <vsg/io/ReaderWriter.h>
-#include <vsg/nodes/VertexIndexDraw.h>
+#include <vsg/nodes/InstanceDrawIndexed.h>
+#include <vsg/nodes/InstanceNode.h>
 #include <vsg/vk/Context.h>
 
 using namespace vsg;
 
-VertexIndexDraw::VertexIndexDraw()
+InstanceDrawIndexed::InstanceDrawIndexed()
 {
 }
 
-VertexIndexDraw::VertexIndexDraw(const VertexIndexDraw& rhs, const CopyOp& copyop) :
+InstanceDrawIndexed::InstanceDrawIndexed(const InstanceDrawIndexed& rhs, const CopyOp& copyop) :
     Inherit(rhs, copyop),
     indexCount(rhs.indexCount),
-    instanceCount(rhs.instanceCount),
     firstIndex(rhs.firstIndex),
     vertexOffset(rhs.vertexOffset),
-    firstInstance(rhs.firstInstance),
     firstBinding(rhs.firstBinding),
     arrays(copyop(rhs.arrays)),
     indices(copyop(rhs.indices))
 {
 }
 
-VertexIndexDraw::~VertexIndexDraw()
+InstanceDrawIndexed::~InstanceDrawIndexed()
 {
 }
 
-int VertexIndexDraw::compare(const Object& rhs_object) const
+int InstanceDrawIndexed::compare(const Object& rhs_object) const
 {
     int result = Object::compare(rhs_object);
     if (result != 0) return result;
 
     const auto& rhs = static_cast<decltype(*this)>(rhs_object);
     if ((result = compare_value(indexCount, rhs.indexCount)) != 0) return result;
-    if ((result = compare_value(instanceCount, rhs.instanceCount)) != 0) return result;
     if ((result = compare_value(firstIndex, rhs.firstIndex)) != 0) return result;
-    if ((result = compare_value(firstInstance, rhs.firstInstance)) != 0) return result;
     if ((result = compare_value(vertexOffset, rhs.vertexOffset)) != 0) return result;
     if ((result = compare_value(firstBinding, rhs.firstBinding)) != 0) return result;
     if ((result = compare_pointer_container(arrays, rhs.arrays)) != 0) return result;
     return compare_pointer(indices, rhs.indices);
 }
 
-void VertexIndexDraw::assignArrays(const DataList& arrayData)
+void InstanceDrawIndexed::assignArrays(const DataList& arrayData)
 {
     arrays.clear();
     arrays.reserve(arrayData.size());
@@ -65,7 +62,7 @@ void VertexIndexDraw::assignArrays(const DataList& arrayData)
     }
 }
 
-void VertexIndexDraw::assignIndices(ref_ptr<vsg::Data> indexData)
+void InstanceDrawIndexed::assignIndices(ref_ptr<vsg::Data> indexData)
 {
     if (indexData)
     {
@@ -78,10 +75,8 @@ void VertexIndexDraw::assignIndices(ref_ptr<vsg::Data> indexData)
     }
 }
 
-void VertexIndexDraw::read(Input& input)
+void InstanceDrawIndexed::read(Input& input)
 {
-    _vulkanData.clear();
-
     Command::read(input);
 
     input.read("firstBinding", firstBinding);
@@ -101,13 +96,11 @@ void VertexIndexDraw::read(Input& input)
 
     // vkCmdDrawIndexed settings
     input.read("indexCount", indexCount);
-    input.read("instanceCount", instanceCount);
     input.read("firstIndex", firstIndex);
     input.read("vertexOffset", vertexOffset);
-    input.read("firstInstance", firstInstance);
 }
 
-void VertexIndexDraw::write(Output& output) const
+void InstanceDrawIndexed::write(Output& output) const
 {
     Command::write(output);
 
@@ -128,24 +121,22 @@ void VertexIndexDraw::write(Output& output) const
 
     // vkCmdDrawIndexed settings
     output.write("indexCount", indexCount);
-    output.write("instanceCount", instanceCount);
     output.write("firstIndex", firstIndex);
     output.write("vertexOffset", vertexOffset);
-    output.write("firstInstance", firstInstance);
 }
 
-void VertexIndexDraw::compile(Context& context)
+void InstanceDrawIndexed::compile(Context& context)
 {
-    if (arrays.empty() || !indices)
+    if (arrays.empty())
     {
-        // VertexIndexDraw does not contain required arrays and indices
+        // InstanceDrawIndexed does not contain required arrays and indices
         return;
     }
 
     auto deviceID = context.deviceID;
 
     bool requiresCreateAndCopy = false;
-    if (indices->requiresCopy(deviceID))
+    if (indices && indices->requiresCopy(deviceID))
         requiresCreateAndCopy = true;
     else
     {
@@ -162,28 +153,55 @@ void VertexIndexDraw::compile(Context& context)
     if (requiresCreateAndCopy)
     {
         BufferInfoList combinedBufferInfos(arrays);
-        combinedBufferInfos.push_back(indices);
+        if (indices) combinedBufferInfos.push_back(indices);
         createBufferAndTransferData(context, combinedBufferInfos, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 
-        // info("VertexIndexDraw::compile() create and copy ", this);
+        // info("InstanceDrawIndexed::compile() create and copy ", this);
     }
     else
     {
-        // info("VertexIndexDraw::compile() no need to create and copy ", this);
+        // info("InstanceDrawIndexed::compile() no need to create and copy ", this);
     }
-
-    assignVulkanArrayData(deviceID, arrays, _vulkanData[deviceID]);
 }
 
-void VertexIndexDraw::record(CommandBuffer& commandBuffer) const
+void InstanceDrawIndexed::record(CommandBuffer& commandBuffer) const
 {
-    auto& vkd = _vulkanData[commandBuffer.deviceID];
+    auto instanceNode = commandBuffer.instanceNode;
+    if (!instanceNode)
+    {
+        vsg::info("InstanceDrawIndexed::record() required vsg::InstanceNode not provided.");
+        return;
+    }
 
+    auto deviceID = commandBuffer.deviceID;
     VkCommandBuffer cmdBuffer{commandBuffer};
 
-    vkCmdBindVertexBuffers(cmdBuffer, firstBinding, static_cast<uint32_t>(vkd.vkBuffers.size()), vkd.vkBuffers.data(), vkd.offsets.data());
+    std::vector<VkBuffer> vkBuffers;
+    std::vector<VkDeviceSize> offsets;
 
-    vkCmdBindIndexBuffer(cmdBuffer, indices->buffer->vk(commandBuffer.deviceID), indices->offset, indexType);
+    vkBuffers.reserve(8);
+    offsets.reserve(8);
 
-    vkCmdDrawIndexed(cmdBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+    auto assignBufferInfo = [&](const ref_ptr<BufferInfo>& bufferInfo) -> void {
+        vkBuffers.push_back(bufferInfo->buffer->vk(deviceID));
+        offsets.push_back(bufferInfo->offset);
+    };
+
+    for (auto& bi : arrays)
+    {
+        assignBufferInfo(bi);
+    }
+
+    if (instanceNode->colors) assignBufferInfo(instanceNode->colors);
+    if (instanceNode->translations) assignBufferInfo(instanceNode->translations);
+    if (instanceNode->rotations) assignBufferInfo(instanceNode->rotations);
+    if (instanceNode->scales) assignBufferInfo(instanceNode->scales);
+
+    // TODO: will need to get the values to apply by combing the inherited InstanceNode values with local arrays
+    vkCmdBindVertexBuffers(cmdBuffer, firstBinding, static_cast<uint32_t>(vkBuffers.size()), vkBuffers.data(), offsets.data());
+
+    // vsg::info("InstanceDrawIndexed::record(CommandBuffer& commandBuffer) vkCmdDrawIndexed vkBuffers.size() = ", vkBuffers.size(), ", indexCount = ", indexCount, ", instanceNode->instanceCount = ", instanceNode->instanceCount);
+
+    vkCmdBindIndexBuffer(cmdBuffer, indices->buffer->vk(deviceID), indices->offset, indexType);
+    vkCmdDrawIndexed(cmdBuffer, indexCount, instanceNode->instanceCount, firstIndex, vertexOffset, instanceNode->firstInstance);
 }

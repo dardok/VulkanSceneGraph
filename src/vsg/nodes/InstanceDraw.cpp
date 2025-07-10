@@ -1,6 +1,6 @@
 /* <editor-fold desc="MIT License">
 
-Copyright(c) 2022 Robert Osfield
+Copyright(c) 2025 Robert Osfield
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -13,46 +13,42 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/commands/BindIndexBuffer.h>
 #include <vsg/io/Logger.h>
 #include <vsg/io/ReaderWriter.h>
-#include <vsg/nodes/VertexDraw.h>
+#include <vsg/nodes/InstanceDraw.h>
+#include <vsg/nodes/InstanceNode.h>
 #include <vsg/vk/Context.h>
 
 using namespace vsg;
 
-VertexDraw::VertexDraw()
+InstanceDraw::InstanceDraw()
 {
 }
 
-VertexDraw::VertexDraw(const VertexDraw& rhs, const CopyOp& copyop) :
+InstanceDraw::InstanceDraw(const InstanceDraw& rhs, const CopyOp& copyop) :
     Inherit(rhs, copyop),
     vertexCount(rhs.vertexCount),
-    instanceCount(rhs.instanceCount),
     firstVertex(rhs.firstVertex),
-    firstInstance(rhs.firstInstance),
     firstBinding(rhs.firstBinding),
     arrays(copyop(rhs.arrays))
-
 {
 }
 
-VertexDraw::~VertexDraw()
+InstanceDraw::~InstanceDraw()
 {
 }
 
-int VertexDraw::compare(const Object& rhs_object) const
+int InstanceDraw::compare(const Object& rhs_object) const
 {
     int result = Object::compare(rhs_object);
     if (result != 0) return result;
 
     const auto& rhs = static_cast<decltype(*this)>(rhs_object);
     if ((result = compare_value(vertexCount, rhs.vertexCount)) != 0) return result;
-    if ((result = compare_value(instanceCount, rhs.instanceCount)) != 0) return result;
     if ((result = compare_value(firstVertex, rhs.firstVertex)) != 0) return result;
-    if ((result = compare_value(firstInstance, rhs.firstInstance)) != 0) return result;
     if ((result = compare_value(firstBinding, rhs.firstBinding)) != 0) return result;
     return compare_pointer_container(arrays, rhs.arrays);
 }
 
-void VertexDraw::assignArrays(const DataList& arrayData)
+void InstanceDraw::assignArrays(const DataList& arrayData)
 {
     arrays.clear();
     arrays.reserve(arrayData.size());
@@ -62,10 +58,8 @@ void VertexDraw::assignArrays(const DataList& arrayData)
     }
 }
 
-void VertexDraw::read(Input& input)
+void InstanceDraw::read(Input& input)
 {
-    _vulkanData.clear();
-
     Command::read(input);
 
     input.read("firstBinding", firstBinding);
@@ -80,12 +74,10 @@ void VertexDraw::read(Input& input)
 
     // vkCmdDraw settings
     input.read("vertexCount", vertexCount);
-    input.read("instanceCount", instanceCount);
     input.read("firstVertex", firstVertex);
-    input.read("firstInstance", firstInstance);
 }
 
-void VertexDraw::write(Output& output) const
+void InstanceDraw::write(Output& output) const
 {
     Command::write(output);
 
@@ -99,18 +91,16 @@ void VertexDraw::write(Output& output) const
             output.writeObject("Array", nullptr);
     }
 
-    // vkCmdDraw settings
+    // vkCmdDrawIndexed settings
     output.write("vertexCount", vertexCount);
-    output.write("instanceCount", instanceCount);
     output.write("firstVertex", firstVertex);
-    output.write("firstInstance", firstInstance);
 }
 
-void VertexDraw::compile(Context& context)
+void InstanceDraw::compile(Context& context)
 {
     if (arrays.empty())
     {
-        // VertexDraw does not contain required arrays
+        // InstanceDraw does not contain required arrays and indices
         return;
     }
 
@@ -128,25 +118,52 @@ void VertexDraw::compile(Context& context)
 
     if (requiresCreateAndCopy)
     {
-        BufferInfoList combinedBufferInfos(arrays);
-        createBufferAndTransferData(context, combinedBufferInfos, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
+        createBufferAndTransferData(context, arrays, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 
-        // info("VertexDraw::compile() create and copy ", this);
+        // info("InstanceDraw::compile() create and copy ", this);
     }
     else
     {
-        // info("VertexDraw::compile() no need to create and copy ", this);
+        // info("InstanceDraw::compile() no need to create and copy ", this);
     }
-
-    assignVulkanArrayData(deviceID, arrays, _vulkanData[deviceID]);
 }
 
-void VertexDraw::record(CommandBuffer& commandBuffer) const
+void InstanceDraw::record(CommandBuffer& commandBuffer) const
 {
-    auto& vkd = _vulkanData[commandBuffer.deviceID];
+    auto instanceNode = commandBuffer.instanceNode;
+    if (!instanceNode)
+    {
+        vsg::info("InstanceDraw::record() required vsg::InstanceNode not provided.");
+        return;
+    }
 
+    auto deviceID = commandBuffer.deviceID;
     VkCommandBuffer cmdBuffer{commandBuffer};
 
-    vkCmdBindVertexBuffers(cmdBuffer, firstBinding, static_cast<uint32_t>(vkd.vkBuffers.size()), vkd.vkBuffers.data(), vkd.offsets.data());
-    vkCmdDraw(cmdBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+    std::vector<VkBuffer> vkBuffers;
+    std::vector<VkDeviceSize> offsets;
+
+    vkBuffers.reserve(8);
+    offsets.reserve(8);
+
+    auto assignBufferInfo = [&](const ref_ptr<BufferInfo>& bufferInfo) -> void {
+        vkBuffers.push_back(bufferInfo->buffer->vk(deviceID));
+        offsets.push_back(bufferInfo->offset);
+    };
+
+    for (auto& bi : arrays)
+    {
+        assignBufferInfo(bi);
+    }
+
+    if (instanceNode->colors) assignBufferInfo(instanceNode->colors);
+    if (instanceNode->translations) assignBufferInfo(instanceNode->translations);
+    if (instanceNode->rotations) assignBufferInfo(instanceNode->rotations);
+    if (instanceNode->scales) assignBufferInfo(instanceNode->scales);
+
+    // TODO: will need to get the values to apply by combing the inherited InstanceNode values with local arrays
+    vkCmdBindVertexBuffers(cmdBuffer, firstBinding, static_cast<uint32_t>(vkBuffers.size()), vkBuffers.data(), offsets.data());
+
+    // vsg::info("InstanceDraw::record(CommandBuffer& commandBuffer) vkCmdDraw vkBuffers.size() = ", vkBuffers.size(), ", vertexCount = ", vertexCount, ", instanceNode->instanceCount = ", instanceNode->instanceCount);
+    vkCmdDraw(cmdBuffer, vertexCount, instanceNode->instanceCount, firstVertex, instanceNode->firstInstance);
 }

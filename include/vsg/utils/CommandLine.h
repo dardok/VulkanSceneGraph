@@ -140,7 +140,7 @@ namespace vsg
                     }
                     else
                     {
-                        std::string parameters = ((match + " ") + ... + type_name(args));
+                        std::string parameters = (match + ... + space_type_name(args));
                         std::string errorMessage = std::string("Failed to match command line required parameters for ") + parameters;
                         _errorMessages.push_back(errorMessage);
                     }
@@ -273,13 +273,12 @@ namespace vsg
 
     inline std::ostream& operator<<(std::ostream& output, const CommandLine& arguments)
     {
-        for(int i=0; i < arguments.argc(); ++i)
+        for (int i = 0; i < arguments.argc(); ++i)
         {
-            if (i>0) output << ' ';
+            if (i > 0) output << ' ';
             output << arguments[i];
         }
         return output;
     }
-
 
 } // namespace vsg
