@@ -110,10 +110,11 @@ void ArrayState::apply(const vsg::VertexIndexDraw& vid)
 
 void ArrayState::apply(const vsg::InstanceNode& id)
 {
-    if (id.colors) applyArray(3, id.colors);
-    if (id.translations) applyArray(4, id.translations);
-    if (id.rotations) applyArray(5, id.rotations);
-    if (id.scales) applyArray(6, id.scales);
+    // bindings set by Phong/PBR ShaderSets.
+    if (id.colors) applyArray(6, id.colors);
+    if (id.translations) applyArray(7, id.translations);
+    if (id.rotations) applyArray(8, id.rotations);
+    if (id.scales) applyArray(9, id.scales);
 }
 
 void ArrayState::apply(const vsg::InstanceDraw& id)
