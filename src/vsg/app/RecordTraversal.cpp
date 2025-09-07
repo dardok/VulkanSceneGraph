@@ -366,7 +366,7 @@ void RecordTraversal::apply(const AmbientLight& light)
     CPU_INSTRUMENTATION_L2_O(instrumentation, &light);
 
     //debug("RecordTraversal::apply(AmbientLight) ", light.className());
-    if (_viewDependentState) _viewDependentState->ambientLights.emplace_back(_state->modelviewMatrixStack.top(), &light);
+    if (light.intensity >= intensityMinimum && _viewDependentState) _viewDependentState->ambientLights.emplace_back(_state->modelviewMatrixStack.top(), &light);
 }
 
 void RecordTraversal::apply(const DirectionalLight& light)
@@ -374,7 +374,7 @@ void RecordTraversal::apply(const DirectionalLight& light)
     CPU_INSTRUMENTATION_L2_O(instrumentation, &light);
 
     //debug("RecordTraversal::apply(DirectionalLight) ", light.className());
-    if (_viewDependentState) _viewDependentState->directionalLights.emplace_back(_state->modelviewMatrixStack.top(), &light);
+    if (light.intensity >= intensityMinimum && _viewDependentState) _viewDependentState->directionalLights.emplace_back(_state->modelviewMatrixStack.top(), &light);
 }
 
 void RecordTraversal::apply(const PointLight& light)
@@ -382,7 +382,7 @@ void RecordTraversal::apply(const PointLight& light)
     CPU_INSTRUMENTATION_L2_O(instrumentation, &light);
 
     //debug("RecordTraversal::apply(PointLight) ", light.className());
-    if (_viewDependentState) _viewDependentState->pointLights.emplace_back(_state->modelviewMatrixStack.top(), &light);
+    if (light.intensity >= intensityMinimum && _viewDependentState) _viewDependentState->pointLights.emplace_back(_state->modelviewMatrixStack.top(), &light);
 }
 
 void RecordTraversal::apply(const SpotLight& light)
@@ -390,7 +390,7 @@ void RecordTraversal::apply(const SpotLight& light)
     CPU_INSTRUMENTATION_L2_O(instrumentation, &light);
 
     //debug("RecordTraversal::apply(SpotLight) ", light.className());
-    if (_viewDependentState) _viewDependentState->spotLights.emplace_back(_state->modelviewMatrixStack.top(), &light);
+    if (light.intensity >= intensityMinimum && _viewDependentState) _viewDependentState->spotLights.emplace_back(_state->modelviewMatrixStack.top(), &light);
 }
 
 // transform nodes
@@ -556,8 +556,8 @@ void RecordTraversal::apply(const View& view)
 {
     GPU_INSTRUMENTATION_L1_NCO(instrumentation, *getCommandBuffer(), "View", COLOR_RECORD_L1, &view);
 
-    // Reset the state at the start of a new view traversal.
-    _state->reset();
+    // dirty the state stacks to ensure state is newly applied for the View.
+    _state->dirtyStateStacks();
 
     // note, View::accept() updates the RecordTraversal's traversalMask
     auto cached_traversalMask = _state->_commandBuffer->traversalMask;
@@ -670,10 +670,12 @@ void RecordTraversal::apply(const CommandGraph& commandGraph)
         auto cg = const_cast<CommandGraph*>(&commandGraph);
         if (cg->device)
         {
-            if (_viewDependentState && _viewDependentState->view && _viewDependentState->view->camera)
+            cg->getOrCreateRecordTraversal()->_state->inherit(*_state);
+
+            if (_viewDependentState && _viewDependentState->view && (_viewDependentState->view->features & INHERIT_VIEWPOINT) != 0)
             {
                 auto camera = _viewDependentState->view->camera;
-                cg->getOrCreateRecordTraversal()->_state->setInhertiedViewProjectionAndViewMatrix(camera->projectionMatrix->transform(), camera->viewMatrix->transform());
+                if (camera) cg->getOrCreateRecordTraversal()->_state->setInhertiedViewProjectionAndViewMatrix(camera->projectionMatrix->transform(), camera->viewMatrix->transform());
             }
 
             cg->record(recordedCommandBuffers, _frameStamp, _databasePager);

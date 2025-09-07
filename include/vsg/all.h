@@ -48,6 +48,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/maths/mat2.h>
 #include <vsg/maths/mat3.h>
 #include <vsg/maths/mat4.h>
+#include <vsg/maths/numbers.h>
 #include <vsg/maths/plane.h>
 #include <vsg/maths/quat.h>
 #include <vsg/maths/sample.h>
@@ -128,6 +129,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/commands/Draw.h>
 #include <vsg/commands/DrawIndexed.h>
 #include <vsg/commands/DrawIndexedIndirect.h>
+#include <vsg/commands/DrawIndexedIndirectCommand.h>
 #include <vsg/commands/DrawIndirect.h>
 #include <vsg/commands/DrawIndirectCommand.h>
 #include <vsg/commands/EndQuery.h>

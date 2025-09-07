@@ -2,7 +2,7 @@
 
 /* <editor-fold desc="MIT License">
 
-Copyright(c) 2018 Robert Osfield
+Copyright(c) 2025 Robert Osfield
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -13,31 +13,42 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/commands/Command.h>
+#include <vsg/state/BufferInfo.h>
 #include <vsg/vk/CommandBuffer.h>
 
 namespace vsg
 {
-
-    /** Dispatch command encapsulates vkCmdDispatch, used for dispatching a Compute pipeline.*/
-    class VSG_DECLSPEC Dispatch : public Inherit<Command, Dispatch>
+    /// Equivalent to VkDrawIndexedIndirectCommand that adds read/write support
+    struct DrawIndexedIndirectCommand
     {
-    public:
-        Dispatch() {}
+        uint32_t indexCount = 0;
+        uint32_t instanceCount = 0;
+        uint32_t firstIndex = 0;
+        int32_t vertexOffset = 0;
+        uint32_t firstInstance = 0;
 
-        Dispatch(uint32_t in_groupCountX, uint32_t in_groupCountY, uint32_t in_groupCountZ) :
-            groupCountX(in_groupCountX),
-            groupCountY(in_groupCountY),
-            groupCountZ(in_groupCountZ) {}
+        void read(vsg::Input& input)
+        {
+            input.read("indexCount", indexCount);
+            input.read("instanceCount", instanceCount);
+            input.read("firstIndex", firstIndex);
+            input.read("vertexOffset", vertexOffset);
+            input.read("firstInstance", firstInstance);
+        }
 
-        void read(Input& input) override;
-        void write(Output& output) const override;
-
-        void record(CommandBuffer& commandBuffer) const override;
-
-        uint32_t groupCountX = 0;
-        uint32_t groupCountY = 0;
-        uint32_t groupCountZ = 0;
+        void write(vsg::Output& output) const
+        {
+            output.write("indexCount", indexCount);
+            output.write("instanceCount", instanceCount);
+            output.write("firstIndex", firstIndex);
+            output.write("vertexOffset", vertexOffset);
+            output.write("firstInstance", firstInstance);
+        }
     };
-    VSG_type_name(vsg::Dispatch);
+
+    template<>
+    constexpr bool has_read_write<DrawIndexedIndirectCommand>() { return true; }
+
+    VSG_array(DrawIndexedIndirectCommandArray, DrawIndexedIndirectCommand);
 
 } // namespace vsg

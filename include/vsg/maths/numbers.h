@@ -1,3 +1,5 @@
+#pragma once
+
 /* <editor-fold desc="MIT License">
 
 Copyright(c) 2018 Robert Osfield
@@ -10,29 +12,26 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
-#include <vsg/commands/Dispatch.h>
+#include <limits>
 
-using namespace vsg;
-
-void Dispatch::read(Input& input)
+namespace vsg
 {
-    Command::read(input);
+    template<typename T>
+    struct numbers
+    {
+        static constexpr T zero() { return static_cast<T>(0.0); }
+        static constexpr T half() { return static_cast<T>(0.5); }
+        static constexpr T one() { return static_cast<T>(1.0); }
+        static constexpr T two() { return static_cast<T>(2.0); }
+        static constexpr T three() { return static_cast<T>(3.0); }
 
-    input.read("groupCountX", groupCountX);
-    input.read("groupCountY", groupCountY);
-    input.read("groupCountZ", groupCountZ);
-}
+        static constexpr T minus_one() { return static_cast<T>(-1.0); }
 
-void Dispatch::write(Output& output) const
-{
-    Command::write(output);
+        static constexpr T epsilon() { return std::numeric_limits<T>::epsilon(); }
 
-    output.write("groupCountX", groupCountX);
-    output.write("groupCountY", groupCountY);
-    output.write("groupCountZ", groupCountZ);
-}
+        static constexpr T PI() { return static_cast<T>(3.14159265358979323846); }
+        static constexpr T degrees_to_radians() { return PI() / static_cast<T>(180.0); }
+        static constexpr T radians_to_degrees() { return static_cast<T>(180.0) / PI(); }
+    };
 
-void Dispatch::record(CommandBuffer& commandBuffer) const
-{
-    vkCmdDispatch(commandBuffer, groupCountX, groupCountY, groupCountZ);
-}
+} // namespace vsg
