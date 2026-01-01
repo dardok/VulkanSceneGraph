@@ -418,7 +418,7 @@ ASSIGN_SOURCE_GROUPS("Header Files" "${VSG_SOURCE_DIR}/include/vsg" ${HEADERS})
 set_property(TARGET vsg PROPERTY VERSION ${VSG_VERSION_MAJOR}.${VSG_VERSION_MINOR}.${VSG_VERSION_PATCH})
 set_property(TARGET vsg PROPERTY SOVERSION ${VSG_SOVERSION})
 set_property(TARGET vsg PROPERTY POSITION_INDEPENDENT_CODE ON)
-set_property(TARGET vsg PROPERTY CXX_STANDARD 17)
+target_compile_features(vsg PUBLIC cxx_std_17)
 if(WIN32)
     set_property(TARGET vsg PROPERTY RUNTIME_OUTPUT_NAME vsg-${VSG_SOVERSION})
 endif()
@@ -434,6 +434,10 @@ target_link_libraries(vsg ${LIBRARIES})
 
 if (BUILD_SHARED_LIBS)
     target_compile_definitions(vsg INTERFACE VSG_SHARED_LIBRARY)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT VSG_USE_DYNAMIC_CAST)
+    # Static build, Clang, and we are not using dynamic_cast:
+    # export Array/Value/etc. to stabilize typeid.
+    target_compile_definitions(vsg PRIVATE VSG_EXPORTS)
 endif()
 
 # install headers
