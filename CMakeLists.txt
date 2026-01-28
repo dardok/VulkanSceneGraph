@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(vsg
-    VERSION 1.1.13
+    VERSION 1.1.14
     DESCRIPTION "VulkanSceneGraph library"
     LANGUAGES C CXX
 )
-set(VSG_SOVERSION 15)
+set(VSG_SOVERSION 16)
 SET(VSG_RELEASE_CANDIDATE 0)
 set(Vulkan_MIN_VERSION 1.1.70.0)
 
@@ -82,6 +82,7 @@ if (VSG_SUPPORTS_Windowing)
         set(FIND_DEPENDENCY_WINDOWING "find_library(COCOA_LIBRARY Cocoa)\nfind_library(QUARTZCORE_LIBRARY QuartzCore)\n")
         find_library(COCOA_LIBRARY Cocoa)
         find_library(QUARTZCORE_LIBRARY QuartzCore)
+<<<<<<< HEAD
     elseif (UNIX)
         if(BUILD_WAYLAND)
             set(FIND_DEPENDENCY_WINDOWING "find_package(PkgConfig REQUIRED)\npkg_check_modules(wayland-client REQUIRED IMPORTED_TARGET wayland-client)\npkg_check_modules(wayland-cursor REQUIRED IMPORTED_TARGET wayland-cursor)\npkg_check_modules(xkbcommon REQUIRED IMPORTED_TARGET xkbcommon)\n")
@@ -106,6 +107,8 @@ if (VSG_SUPPORTS_Windowing)
             find_package(PkgConfig REQUIRED)
             pkg_check_modules(xcb REQUIRED IMPORTED_TARGET xcb)
         endif()
+    elseif (DEFINED OHOS_ARCH)  # OpenHarmony
+        set(FIND_DEPENDENCY_WINDOWING "")
     else()
     endif()
 endif()
