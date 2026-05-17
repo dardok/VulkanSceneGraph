@@ -92,7 +92,7 @@ void Viewer::removeWindow(ref_ptr<Window> window)
     CommandGraphs commandGraphs;
     for (const auto& task : recordAndSubmitTasks)
     {
-        for (auto& cg : task->commandGraphs)
+        for (const auto& cg : task->commandGraphs)
         {
             if (cg->window != window) commandGraphs.push_back(cg);
         }
@@ -582,7 +582,7 @@ void Viewer::addRecordAndSubmitTaskAndPresentation(CommandGraphs commandGraphs)
     CommandGraphs combinedCommandGraphs;
     for (const auto& task : recordAndSubmitTasks)
     {
-        for (auto& cg : task->commandGraphs)
+        for (const auto& cg : task->commandGraphs)
         {
             combinedCommandGraphs.push_back(cg);
         }
@@ -794,15 +794,20 @@ void Viewer::update()
 {
     CPU_INSTRUMENTATION_L1_NC(instrumentation, "Viewer update", COLOR_UPDATE);
 
+    CompileResult cr;
+
     // merge any updates from the DatabasePager
     for (const auto& task : recordAndSubmitTasks)
     {
         if (task->databasePager)
         {
-            CompileResult cr;
             task->databasePager->updateSceneGraph(_frameStamp, cr);
-            if (cr.requiresViewerUpdate()) updateViewer(*this, cr);
         }
+    }
+
+    if (cr.requiresViewerUpdate(this))
+    {
+        updateViewer(*this, cr);
     }
 
     // run update operations
